@@ -70,6 +70,15 @@
 #define RFM69_IRQN    RFM69_IRQ
 */
 
+void Blink(byte PIN, byte DELAY_MS, byte loops) {
+  for (byte i=0; i<loops; i++)  {
+    digitalWrite(PIN,HIGH);
+    delay(DELAY_MS);
+    digitalWrite(PIN,LOW);
+    delay(DELAY_MS);
+  }
+}
+
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
@@ -118,8 +127,6 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
-
-
 void loop() {
   delay(1000);  // Wait 1 second between transmits, could also 'sleep' here!
 
@@ -140,20 +147,11 @@ void loop() {
     if (rf69.recv(buf, &len)) {
       Serial.print("Got a reply: ");
       Serial.println((char*)buf);
-      //Blink(LED, 50, 3); //blink LED 3 times, 50ms between blinks
+      Blink(LED, 50, 3); //blink LED 3 times, 50ms between blinks
     } else {
       Serial.println("Receive failed");
     }
   } else {
     Serial.println("No reply, is another RFM69 listening?");
-  }
-}
-
-void Blink(byte PIN, byte DELAY_MS, byte loops) {
-  for (byte i=0; i<loops; i++)  {
-    digitalWrite(PIN,HIGH);
-    delay(DELAY_MS);
-    digitalWrite(PIN,LOW);
-    delay(DELAY_MS);
   }
 }
