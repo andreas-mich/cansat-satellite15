@@ -1,59 +1,15 @@
-// rf69 demo tx rx.pde
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple messageing client
-// with the RH_RF69 class. RH_RF69 class does not provide for addressing or
-// reliability, so you should only use RH_RF69  if you do not need the higher
-// level messaging abilities.
-// It is designed to work with the other example rf69_server.
-// Demonstrates the use of AES encryption, setting the frequency and modem 
-// configuration
-
 #include <SPI.h>
 #include <RH_RF69.h>
 
 /************ Radio Setup ***************/
 
 #define ADAFRUIT_FEATHER_M0
-
-// Change to 434.0 or other frequency, must match RX's freq!
 #define RF69_FREQ 433.0
-
-#if defined (__AVR_ATmega32U4__) // Feather 32u4 w/Radio
-  #define RFM69_CS      8
-  #define RFM69_INT     7
-  #define RFM69_RST     4
-  #define LED           13
+#define RFM69_CS      6
+#define RFM69_INT     9
+#define RFM69_RST     10
+#define LED           13
   
-#elif defined(ADAFRUIT_FEATHER_M0) // Feather M0 w/Radio
-  #define RFM69_CS      6
-  #define RFM69_INT     9
-  #define RFM69_RST     10
-  #define LED           13
-  
-#elif defined (__AVR_ATmega328P__)  // Feather 328P w/wing
-  #define RFM69_INT     3  // 
-  #define RFM69_CS      4  //
-  #define RFM69_RST     2  // "A"
-  #define LED           13
-
-#elif defined(ESP8266)    // ESP8266 feather w/wing
-  #define RFM69_CS      2    // "E"
-  #define RFM69_IRQ     15   // "B"
-  #define RFM69_RST     16   // "D"
-  #define LED           0
-
-#elif defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2)
-  #define RFM69_INT     9  // "A"
-  #define RFM69_CS      10  // "B"
-  #define RFM69_RST     11  // "C"
-  #define LED           13
-
-#elif defined(ESP32)    // ESP32 feather w/wing
-  #define RFM69_RST     13   // same as LED
-  #define RFM69_CS      33   // "B"
-  #define RFM69_INT     27   // "A"
-  #define LED           13
-#endif
 
 
 /* Teensy 3.x w/wing
@@ -129,7 +85,6 @@ void setup()
 
 void loop() {
   delay(1000);  // Wait 1 second between transmits, could also 'sleep' here!
-
   char radiopacket[20] = "Hello World #";
   itoa(packetnum++, radiopacket+13, 10);
   Serial.print("Sending "); Serial.println(radiopacket);
