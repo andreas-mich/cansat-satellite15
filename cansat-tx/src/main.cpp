@@ -1,17 +1,27 @@
 #include <SPI.h>
 #include <RH_RF69.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_ADXL345_U.h>
+
+/*                       */
+/* ADXL345 accelerometer */
+/*                       */
+
+/* Assign a unique ID to this sensor at the same time */
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
+
+
 
 /************ Radio Setup ***************/
 
 #define ADAFRUIT_FEATHER_M0
-#define RF69_FREQ 433.0
+#define RF69_FREQ     433.0
 #define RFM69_CS      6
 #define RFM69_INT     9
 #define RFM69_RST     10
 #define LED           13
   
-
-
 /* Teensy 3.x w/wing
 #define RFM69_RST     9   // "A"
 #define RFM69_CS      10   // "B"
@@ -42,8 +52,32 @@ int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 void setup() 
 {
+  // Initialise serial port to PC for debugging purposes
   Serial.begin(115200);
   while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  Serial.println("Initialising..."); Serial.println("");
+
+  /*                       */
+  /* ADXL345 accelerometer */
+  /*                       */
+
+  /* Initialise the sensor */
+  if(!accel.begin())
+  {
+    /* There was a problem detecting the ADXL345 ... check your connections */
+    Serial.println("No ADXL345 detected ... Check your wiring!");
+    //while(1);
+  }
+
+  /* Set the range to whatever is appropriate for your project */
+  accel.setRange(ADXL345_RANGE_16_G);
+  // accel.setRange(ADXL345_RANGE_8_G);
+  // accel.setRange(ADXL345_RANGE_4_G);
+  // accel.setRange(ADXL345_RANGE_2_G);
+
+  /*                   */
+  /* RFM69 transceiver */
+  /*                   */
 
   pinMode(LED, OUTPUT);     
   pinMode(RFM69_RST, OUTPUT);
@@ -84,29 +118,40 @@ void setup()
 }
 
 void loop() {
-  delay(1000);  // Wait 1 second between transmits, could also 'sleep' here!
-  char radiopacket[20] = "Hello World #";
-  itoa(packetnum++, radiopacket+13, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
-  
-  // Send a message!
-  rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
+  /*                       */
+  /* ADXL345 accelerometer */
+  /*                       */
+
+  /* Get a new sensor event */ 
+  sensors_event_t event; 
+  accel.getEvent(&event);
+
+  // Total size = 16 bytes
+  struct radiopacket {
+    unsigned long t; /**< time is in milliseconds */
+    float x;
+    float y;
+    float z;
+  } rp;
+
+  rp.t = millis(); // could not use event.timestamp as it is always 0 for this sensor
+  rp.x = event.acceleration.x;
+  rp.y = event.acceleration.y;
+  rp.z = event.acceleration.z;
+
+  Serial.print("t="); Serial.print(rp.t); Serial.print("\n");
+  Serial.print("x="); Serial.print(rp.x); Serial.print("\n");
+  Serial.print("y="); Serial.print(rp.y); Serial.print("\n");
+  Serial.print("z="); Serial.print(rp.z); Serial.print("\n");
+
+  /*                   */
+  /* RFM69 transceiver */
+  /*                   */
+
+  Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
+
+  rf69.send((uint8_t *)&rp, sizeof(rp));
   rf69.waitPacketSent();
 
-  // Now wait for a reply
-  uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-
-  if (rf69.waitAvailableTimeout(500))  { 
-    // Should be a reply message for us now   
-    if (rf69.recv(buf, &len)) {
-      Serial.print("Got a reply: ");
-      Serial.println((char*)buf);
-      Blink(LED, 50, 3); //blink LED 3 times, 50ms between blinks
-    } else {
-      Serial.println("Receive failed");
-    }
-  } else {
-    Serial.println("No reply, is another RFM69 listening?");
-  }
+  delay(1000);  // Wait 1 second between transmits
 }
