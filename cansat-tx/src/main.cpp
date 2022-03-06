@@ -54,7 +54,7 @@ void setup()
 {
   // Initialise serial port to PC for debugging purposes
   Serial.begin(115200);
-  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  //while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
   Serial.println("Initialising..."); Serial.println("");
 
   /*                       */
