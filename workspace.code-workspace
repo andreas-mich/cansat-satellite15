@@ -1,20 +1,4 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"name": "cansat-rx",
-			"path": "cansat-rx"
-		},
-		{
-			"name": "cansat-tx",
-			"path": "cansat-tx"
-		},
-		{
-			"name": "cansat-ax",
-			"path": "cansat-ax"
-		}
-	],
+	"folders": [],
 	"settings": {}
 }

@@ -3,17 +3,24 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL345_U.h>
+#include <Arduino.h>
 
-/*                       */
-/* ADXL345 accelerometer */
-/*                       */
+////////////////////////
+// ADXL345 accelerometer
+////////////////////////
 
-/* Assign a unique ID to this sensor at the same time */
+// Assign a unique ID to this sensor at the same time
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
+/////////////////////
+// Temperature sensor
+/////////////////////
 
+#define sensorPin A0
 
-/************ Radio Setup ***************/
+//////////////////////////
+// Radio Transceiver setup
+//////////////////////////
 
 #define ADAFRUIT_FEATHER_M0
 #define RF69_FREQ     433.0
@@ -21,63 +28,44 @@ Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 #define RFM69_INT     9
 #define RFM69_RST     10
 #define LED           13
-  
-/* Teensy 3.x w/wing
-#define RFM69_RST     9   // "A"
-#define RFM69_CS      10   // "B"
-#define RFM69_IRQ     4    // "C"
-#define RFM69_IRQN    digitalPinToInterrupt(RFM69_IRQ )
-*/
- 
-/* WICED Feather w/wing 
-#define RFM69_RST     PA4     // "A"
-#define RFM69_CS      PB4     // "B"
-#define RFM69_IRQ     PA15    // "C"
-#define RFM69_IRQN    RFM69_IRQ
-*/
-
-void Blink(byte PIN, byte DELAY_MS, byte loops) {
-  for (byte i=0; i<loops; i++)  {
-    digitalWrite(PIN,HIGH);
-    delay(DELAY_MS);
-    digitalWrite(PIN,LOW);
-    delay(DELAY_MS);
-  }
-}
 
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
+////////////////////////
+//      SETUP
+////////////////////////
+
 void setup() 
 {
   // Initialise serial port to PC for debugging purposes
   Serial.begin(115200);
-  //while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
-  Serial.println("Initialising..."); Serial.println("");
+  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  Serial.println("1. Starting");
 
-  /*                       */
-  /* ADXL345 accelerometer */
-  /*                       */
+  ////////////////////////
+  // ADXL345 accelerometer
+  ////////////////////////
 
-  /* Initialise the sensor */
+  // Initialise the sensor
   if(!accel.begin())
   {
-    /* There was a problem detecting the ADXL345 ... check your connections */
-    Serial.println("No ADXL345 detected ... Check your wiring!");
-    //while(1);
+    Serial.println("2. ADXL345: Not detected!");
+  } else {
+    Serial.println("2. ADXL345: detected!");
   }
 
-  /* Set the range to whatever is appropriate for your project */
+  // Set the range to whatever is appropriate for your project
   accel.setRange(ADXL345_RANGE_16_G);
   // accel.setRange(ADXL345_RANGE_8_G);
   // accel.setRange(ADXL345_RANGE_4_G);
   // accel.setRange(ADXL345_RANGE_2_G);
 
-  /*                   */
-  /* RFM69 transceiver */
-  /*                   */
+  ////////////////////
+  // RFM69 transceiver
+  ////////////////////
 
   pinMode(LED, OUTPUT);     
   pinMode(RFM69_RST, OUTPUT);
@@ -117,37 +105,53 @@ void setup()
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
-void loop() {
-  /*                       */
-  /* ADXL345 accelerometer */
-  /*                       */
+////////////////////////
+//       LOOP
+////////////////////////
 
-  /* Get a new sensor event */ 
+void loop() {
+  /////////////////////
+  // Temperature sensor
+  /////////////////////
+
+  int reading = analogRead(sensorPin);
+  float voltage = reading * (3300.0 / 1024.0);
+  float temperature = (voltage - 500) / 10;
+
+  ////////////////////////
+  // ADXL345 accelerometer
+  ////////////////////////
+
+  // Get a new acc sensor event 
   sensors_event_t event; 
   accel.getEvent(&event);
 
-  // Total size = 16 bytes
+  ////////////////////
+  // RFM69 transceiver
+  ////////////////////
+
+  // Total size = 20 bytes
+  // 1x unsigned long 4 bytes = 4 bytes
+  // 4x float 4 bytes = 16 bytes
   struct radiopacket {
-    unsigned long t; /**< time is in milliseconds */
+    unsigned long t; // time is in milliseconds
     float x;
     float y;
     float z;
+    float temp;
   } rp;
 
   rp.t = millis(); // could not use event.timestamp as it is always 0 for this sensor
   rp.x = event.acceleration.x;
   rp.y = event.acceleration.y;
   rp.z = event.acceleration.z;
+  rp.temp = temperature;
 
   Serial.print("t="); Serial.print(rp.t); Serial.print("\n");
   Serial.print("x="); Serial.print(rp.x); Serial.print("\n");
   Serial.print("y="); Serial.print(rp.y); Serial.print("\n");
   Serial.print("z="); Serial.print(rp.z); Serial.print("\n");
-
-  /*                   */
-  /* RFM69 transceiver */
-  /*                   */
-
+  Serial.print("temperature="); Serial.print(rp.temp); Serial.print("C"); Serial.print("\n");
   Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
 
   rf69.send((uint8_t *)&rp, sizeof(rp));

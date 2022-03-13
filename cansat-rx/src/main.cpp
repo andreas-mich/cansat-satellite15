@@ -18,40 +18,13 @@
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF69_FREQ 433.0
 
-#if defined (__AVR_ATmega32U4__) // Feather 32u4 w/Radio
-  #define RFM69_CS      8
-  #define RFM69_INT     7
-  #define RFM69_RST     4
-  #define LED           13
-#endif
 
-#if defined(ADAFRUIT_FEATHER_M0) // Feather M0 w/Radio
-  #define RFM69_CS      8
-  #define RFM69_INT     3
-  #define RFM69_RST     4
-  #define LED           13
-#endif
+#define RFM69_INT     3  // 
+#define RFM69_CS      4  //
+#define RFM69_RST     2  // "A"
+#define LED           13
 
-#if defined (__AVR_ATmega328P__)  // Feather 328P w/wing
-  #define RFM69_INT     3  // 
-  #define RFM69_CS      4  //
-  #define RFM69_RST     2  // "A"
-  #define LED           13
-#endif
 
-#if defined(ESP8266)    // ESP8266 feather w/wing
-  #define RFM69_CS      2    // "E"
-  #define RFM69_IRQ     15   // "B"
-  #define RFM69_RST     16   // "D"
-  #define LED           0
-#endif
-
-#if defined(ESP32)    // ESP32 feather w/wing
-  #define RFM69_RST     13   // same as LED
-  #define RFM69_CS      33   // "B"
-  #define RFM69_INT     27   // "A"
-  #define LED           13
-#endif
 
 /* Teensy 3.x w/wing
 #define RFM69_RST     9   // "A"
@@ -121,16 +94,17 @@ void loop() {
 
   // Total size = 16 bytes
   struct radiopacket {
-    unsigned long t; /**< time is in milliseconds */
+    unsigned long t; // time is in milliseconds
     float x;
     float y;
     float z;
+    float temp;
   };
 
   if (rf69.available()) {
     // Should be a message for us now   
-    uint8_t buf[16];
-    uint8_t len = 16;
+    uint8_t buf[20];
+    uint8_t len = 20;
     if (rf69.recv(buf, &len)) {
       if (!len) return;
       buf[len] = 0;
@@ -138,10 +112,12 @@ void loop() {
       Serial.print(len);
       Serial.print("]: ");
       radiopacket (&rp) = (radiopacket (&))(*(buf));
-      Serial.print(" t: "); Serial.println(rp.t);
-      Serial.print(", x: "); Serial.println(rp.x);
-      Serial.print(", y: "); Serial.println(rp.y);
-      Serial.print(", z: "); Serial.println(rp.z);
+      Serial.print("     t: "); Serial.println(rp.t);
+      Serial.print(",    x: "); Serial.println(rp.x);
+      Serial.print(",    y: "); Serial.println(rp.y);
+      Serial.print(",    z: "); Serial.println(rp.z);
+      Serial.print(",    temp: "); Serial.println(rp.temp);
+      
       Serial.print(" RSSI: ");
       Serial.println(rf69.lastRssi(), DEC);
     } else {
