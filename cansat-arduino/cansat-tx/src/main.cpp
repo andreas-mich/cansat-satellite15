@@ -115,8 +115,9 @@ void loop() {
   /////////////////////
 
   int reading = analogRead(sensorPin);
-  float voltage = reading * (3300.0 / 1024.0);
-  float temperature = (voltage - 500) / 10;
+  float voltage = reading * 3.3;
+  voltage /= 1024;
+  float temperature = (voltage - 0.12) * 100;
 
   ////////////////////////
   // ADXL345 accelerometer
