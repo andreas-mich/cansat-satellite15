@@ -54,8 +54,7 @@ void setup()
   pinMode(RFM69_RST, OUTPUT);
   digitalWrite(RFM69_RST, LOW);
 
-  Serial.println("Feather RFM69 RX Test!");
-  Serial.println();
+  //Serial.println("Feather RFM69 RX Test!");
 
   // manual reset
   digitalWrite(RFM69_RST, HIGH);
@@ -64,15 +63,15 @@ void setup()
   delay(10);
   
   if (!rf69.init()) {
-    Serial.println("RFM69 radio init failed");
+    //Serial.println("RFM69 radio init failed");
     while (1);
   }
-  Serial.println("RFM69 radio init OK!");
+  //Serial.println("RFM69 radio init OK!");
   
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
   // No encryption
   if (!rf69.setFrequency(RF69_FREQ)) {
-    Serial.println("setFrequency failed");
+    //Serial.println("setFrequency failed");
   }
 
   // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
@@ -86,19 +85,21 @@ void setup()
   
   pinMode(LED, OUTPUT);
 
-  Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
+  //Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
 
 void loop() {
 
-  // Total size = 16 bytes
+  delay(1000);
+
+  // Total size = 20 bytes
   struct radiopacket {
-    unsigned long t; // time is in milliseconds
-    float x;
-    float y;
-    float z;
-    float temp;
+    unsigned long t; // time is in milliseconds - unsigned long = 4 bytes
+    float x; // float = 4 bytes
+    float y; // float = 4 bytes
+    float z; // float = 4 bytes
+    float temp; // float = 4 bytes
   };
 
   if (rf69.available()) {
@@ -107,21 +108,25 @@ void loop() {
     uint8_t len = 20;
     if (rf69.recv(buf, &len)) {
       if (!len) return;
-      buf[len] = 0;
-      Serial.print("Received [");
-      Serial.print(len);
-      Serial.print("]: ");
+      //buf[len] = 0; // why is this?
       radiopacket (&rp) = (radiopacket (&))(*(buf));
-      Serial.print("     t: "); Serial.println(rp.t);
-      Serial.print(",    x: "); Serial.println(rp.x);
-      Serial.print(",    y: "); Serial.println(rp.y);
-      Serial.print(",    z: "); Serial.println(rp.z);
-      Serial.print(",    temp: "); Serial.println(rp.temp);
-      
-      Serial.print(" RSSI: ");
-      Serial.println(rf69.lastRssi(), DEC);
+      //Serial.print("Received [");
+      //Serial.print(len);
+      //Serial.print("]: ");
+      //Serial.print("     t: "); Serial.println(rp.t);
+      //Serial.print(",    x: "); Serial.println(rp.x);
+      //Serial.print(",    y: "); Serial.println(rp.y);
+      //Serial.print(",    z: "); Serial.println(rp.z);
+      //Serial.print(",    temp: "); Serial.println(rp.temp);
+      //Serial.print(" RSSI: ");
+      //Serial.println(rf69.lastRssi(), DEC);
+      Serial.println(rp.t);
+      Serial.println(rp.x);
+      Serial.println(rp.y);
+      Serial.println(rp.z);
+      Serial.println(rp.temp);
     } else {
-      Serial.println("Receive failed");
+      //Serial.println("Receive failed");
     }
   }
 }
