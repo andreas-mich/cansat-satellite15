@@ -1,11 +1,15 @@
 #include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
 
 Adafruit_BMP280 bmp; // I2C Interface
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println(F("BMP280 test"));
+  // Initialise serial port to PC for debugging purposes
+  Serial.begin(115200);
+  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  Serial.println("1. Starting");
 
   if (!bmp.begin()) {
     Serial.println(F("Could not find a valid BMP280 sensor, check wiring!"));

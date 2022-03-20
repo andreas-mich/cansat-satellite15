@@ -4,6 +4,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_ADXL345_U.h>
 #include <Arduino.h>
+#include <Adafruit_BMP280.h>
 
 ////////////////////////
 // ADXL345 accelerometer
@@ -12,11 +13,17 @@
 // Assign a unique ID to this sensor at the same time
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
+///////////////////
+// Manometer sensor
+///////////////////
+
+int DPPin = A0;
+
 /////////////////////
-// Temperature sensor
+// BMP sensor
 /////////////////////
 
-#define sensorPin A0
+Adafruit_BMP280 bmp; // I2C Interface
 
 //////////////////////////
 // Radio Transceiver setup
@@ -64,6 +71,25 @@ void setup()
   // accel.setRange(ADXL345_RANGE_2_G);
 
   ////////////////////
+  // BMP sensor
+  ////////////////////
+
+  // Initialise the sensor
+  if(!bmp.begin())
+  {
+    Serial.println("3. BMP280: Not detected!");
+  } else {
+    Serial.println("3. BMP280: detected!");
+  }
+
+  // Default settings from datasheet
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
+                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+
+  ////////////////////
   // RFM69 transceiver
   ////////////////////
 
@@ -71,7 +97,7 @@ void setup()
   pinMode(RFM69_RST, OUTPUT);
   digitalWrite(RFM69_RST, LOW);
 
-  Serial.println("Feather RFM69 TX Test!");
+  Serial.println("4. Feather RFM69 TX Test!");
   Serial.println();
 
   // manual reset
@@ -81,14 +107,14 @@ void setup()
   delay(10);
   
   if (!rf69.init()) {
-    Serial.println("RFM69 radio init failed");
+    Serial.println("4. RFM69 radio init failed");
     while (1);
   }
-  Serial.println("RFM69 radio init OK!");
+  Serial.println("4. RFM69 radio init OK!");
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
   // No encryption
   if (!rf69.setFrequency(RF69_FREQ)) {
-    Serial.println("setFrequency failed");
+    Serial.println("4. setFrequency failed");
   }
 
   // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
@@ -102,7 +128,7 @@ void setup()
   
   pinMode(LED, OUTPUT);
 
-  Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
+  Serial.print("4. RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
 ////////////////////////
@@ -110,49 +136,54 @@ void setup()
 ////////////////////////
 
 void loop() {
-  /////////////////////
-  // Temperature sensor
-  /////////////////////
-
-  int reading = analogRead(sensorPin);
-  float voltage = reading * 3.3;
-  voltage /= 1024;
-  float temperature = (voltage - 0.12) * 100;
-
-  ////////////////////////
-  // ADXL345 accelerometer
-  ////////////////////////
-
-  // Get a new acc sensor event 
-  sensors_event_t event; 
-  accel.getEvent(&event);
 
   ////////////////////
   // RFM69 transceiver
   ////////////////////
 
-  // Total size = 20 bytes
+  // Total size = 32 bytes
   // 1x unsigned long 4 bytes = 4 bytes
-  // 4x float 4 bytes = 16 bytes
+  // 7x float 4 bytes = 28 bytes
   struct radiopacket {
     unsigned long t; // time is in milliseconds
     float x;
     float y;
     float z;
+    float dp;
     float temp;
+    float pres;
+    float altit;
   } rp;
 
+  // Time of reading
   rp.t = millis(); // could not use event.timestamp as it is always 0 for this sensor
+
+  // ADXL345 accelerometer
+  sensors_event_t event; 
+  accel.getEvent(&event);
   rp.x = event.acceleration.x;
   rp.y = event.acceleration.y;
   rp.z = event.acceleration.z;
-  rp.temp = temperature;
 
+  // Manometer
+  float vout = analogRead(DPPin);  // read the input pin
+  rp.dp = 1000.00*((vout/1023.00) -0.04)/0.09 ; // in Pa;
+
+  // BMP280
+  rp.temp = bmp.readTemperature();
+  rp.pres = bmp.readPressure()/100; //displaying the Pressure in hPa, you can change the unit
+  rp.altit = bmp.readAltitude(1019.66); //The "1019.66" is the pressure(hPa) at sea level in day in your region
+                                        //If you don't know it, modify it until you get your current altitude
+
+  Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
   Serial.print("t="); Serial.print(rp.t); Serial.print("\n");
   Serial.print("x="); Serial.print(rp.x); Serial.print("\n");
   Serial.print("y="); Serial.print(rp.y); Serial.print("\n");
   Serial.print("z="); Serial.print(rp.z); Serial.print("\n");
-  Serial.print("temperature="); Serial.print(rp.temp); Serial.print("C"); Serial.print("\n");
+  Serial.print("temperature= "); Serial.print(rp.temp); Serial.print("C"); Serial.print("\n");
+  Serial.print("pressure= "); Serial.print(rp.pres); Serial.print("\n");
+  Serial.print("altitude= "); Serial.print(rp.altit); Serial.print("\n");
+  Serial.print("diff pressure="); Serial.print(rp.dp); Serial.print("\n");
   Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
 
   rf69.send((uint8_t *)&rp, sizeof(rp));
