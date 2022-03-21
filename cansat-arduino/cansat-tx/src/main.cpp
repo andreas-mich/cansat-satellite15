@@ -189,5 +189,5 @@ void loop() {
   rf69.send((uint8_t *)&rp, sizeof(rp));
   rf69.waitPacketSent();
 
-  delay(1000);  // Wait 1 second between transmits
+  delay(989);  // Wait 1 second between transmits
 }

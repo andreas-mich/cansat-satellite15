@@ -48,7 +48,7 @@ int16_t packetnum = 0;  // packet counter, we increment per xmission
 void setup() 
 {
   Serial.begin(115200);
-  //while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
 
   pinMode(LED, OUTPUT);     
   pinMode(RFM69_RST, OUTPUT);
@@ -93,19 +93,22 @@ void loop() {
 
   delay(1000);
 
-  // Total size = 20 bytes
+  // Total size = 32 bytes
   struct radiopacket {
-    unsigned long t; // time is in milliseconds - unsigned long = 4 bytes
-    float x; // float = 4 bytes
-    float y; // float = 4 bytes
-    float z; // float = 4 bytes
-    float temp; // float = 4 bytes
+    unsigned long t; // time is in milliseconds
+    float x;
+    float y;
+    float z;
+    float dp;
+    float temp;
+    float pres;
+    float altit;
   };
 
   if (rf69.available()) {
     // Should be a message for us now   
-    uint8_t buf[20];
-    uint8_t len = 20;
+    uint8_t buf[32];
+    uint8_t len = 32;
     if (rf69.recv(buf, &len)) {
       if (!len) return;
       //buf[len] = 0; // why is this?
@@ -124,7 +127,10 @@ void loop() {
       Serial.println(rp.x);
       Serial.println(rp.y);
       Serial.println(rp.z);
+      Serial.println(rp.dp);
       Serial.println(rp.temp);
+      Serial.println(rp.pres);
+      Serial.println(rp.altit);
     } else {
       //Serial.println("Receive failed");
     }
