@@ -4,6 +4,7 @@
     #3. Plots the Accelerometers X value and Temperature readings with Time
     #all in one live changing plot
 
+
 import csv
 import serial
 from serial import Serial
@@ -12,12 +13,12 @@ import random
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import numpy as np
-from drawnow import drawnow 
+from drawnow import *
 
 Timevar =[]
 Xvar =[]
 Tempvar =[]
+
 plt.ion()
 count=0
 
@@ -29,12 +30,12 @@ def makeFig():
     plt.xlabel('Time')
     plt.plot(Timevar,Xvar,label='Acceleration(x)(m/s^2)')
     plt.legend(loc='upper left')
-    #plt2=plt.twinx()
+    plt2=plt.twinx()
     #plt.ylim(...)
-    #plt2.plot(Timevar,Tempvar,'r',label='Channel 2')
-    #plt2.set_ylabel('Temperature(K)')
-    #plt.ticklabel_format(useOffset=False)
-    #plt2.legend(loc='upper right')
+    plt2.plot(Timevar,Tempvar,'r',label='Temperature')
+    plt2.set_ylabel('Temperature(K)')
+    plt.ticklabel_format(useOffset=False)
+    plt2.legend(loc='upper right')
     
 
 fieldnames = ["Time", "X", "Y", "Z", "Temperature","AtmosphericPressure","Altitude","DifferentialPressure(Pitot)"]
@@ -59,14 +60,15 @@ while True:
     print("Y:",y)
     z = float(ser.readline().decode("utf-8"))
     print("Z:",z)
+    dp =  float(ser.readline().decode("utf-8"))
+    print("Differential Pressure:",dp)
     temp = float(ser.readline().decode("utf-8"))
     print("Temp:",temp)
     press =  float(ser.readline().decode("utf-8"))
     print("AtmosphericPressure:",press)
     altit =  float(ser.readline().decode("utf-8"))
     print("Altitude:",altit)
-    dp =  float(ser.readline().decode("utf-8"))
-    print("Differential Pressure:",dp)
+
 
     with open('sensordata.csv', 'a') as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -82,7 +84,7 @@ while True:
             }
         csv_writer.writerow(info)
     Xvar.append(x)
-    #Tempvar.append(temp)
+    Tempvar.append(temp)
     Timevar.append(t)
     drawnow(makeFig)
     plt.pause(.00001)
@@ -91,3 +93,4 @@ while True:
         Xvar.pop(0)
         Timevar.pop(0)
         Tempvar.pop(0)
+
