@@ -1,44 +1,69 @@
-#This program serves 3 purposes:
-    #1. A serial data reader (prints serial data from arduino)
-    #2. Saves serial data to a csv file
-    #3. Plots the Accelerometers X value and Temperature readings with Time
-    #all in one live changing plot
+import csv #to save data to csv
 
-
-import csv
-import serial
-from serial import Serial
-import time
-import random
+#to save data to excel
 import pandas as pd
+import openpyxl
+
+#for plotting
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from drawnow import *
 
-Timevar =[]
-Xvar =[]
-Tempvar =[]
+#for arduino connection
+import serial
+from serial import Serial
 
-plt.ion()
+import math
+
+Timevar=[]
+PitotVelocityvar=[]
+Temperaturevar=[]
+Pressurevar=[]
+
+RH = 0.7
 count=0
 
+print('Starting Variables Set Up')
+
+plt.ion()
+
 def makeFig():
-    #plt.ylim(...)
+
+    plt.subplot(2,1,1)
+    plt.plot(Timevar,PitotVelocityvar,"r",label='Velocity(Pitot)')
+    plt.legend(loc='upper left')
+    #plt.ylim(....)
     plt.title('Live Sensor Data')
     plt.grid(True)
-    plt.ylabel('Acceleration-X-Value')
-    plt.xlabel('Time')
-    plt.plot(Timevar,Xvar,label='Acceleration(x)(m/s^2)')
+    plt.ylabel('Velocity(Pitot)')
+    plt.ticklabel_format(useOffset=False)
+
+
+    plt.subplot(2,1,2)
+    plt.plot(Timevar,Temperaturevar,'r',label='Temperature Plot')
     plt.legend(loc='upper left')
+    #plt.ylim(...)
+    plt.grid(True)
+    plt.ylabel('Temperature')
+    plt.xlabel('Time')
+    plt.ticklabel_format(useOffset=False)
     plt2=plt.twinx()
     #plt.ylim(...)
-    plt2.plot(Timevar,Tempvar,'r',label='Temperature')
-    plt2.set_ylabel('Temperature(K)')
-    plt.ticklabel_format(useOffset=False)
+    plt2.plot(Timevar,Pressurevar,label='Atmospheric Pressure')
+    plt2.set_ylabel('A. Pressure')
     plt2.legend(loc='upper right')
-    
 
-fieldnames = ["Time", "X", "Y", "Z", "Temperature","AtmosphericPressure","Altitude","DifferentialPressure(Pitot)"]
+print('Plot Settings Setup')
+
+fieldnames = [
+    "Time (s)",
+    "Acceleration (m/s^2)",
+    "Velocity(Pitot)(m/s)",
+    "DifferentialPressure(Pitot)(Pa)",
+    "Temperature (K)",
+    "AtmosphericPressure (hPa)",
+    "Altitude(m)",
+    ]
 
 with open('sensordata.csv', 'w') as csv_file:
     csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -48,12 +73,16 @@ with open('sensordata.csv', 'w') as csv_file:
 ser = Serial('COM3',115200)
 ser.close()
 ser.open()
+print("Connected to: " + ser.portstr)
 
 while True:
     while (ser.inWaiting()==0):
         pass
+    count+=1
     t = int(ser.readline().decode("utf-8"))
     print("Time:",t)
+    accel = float(ser.readline().decode("utf-8"))
+    print("Acceleration:",accel)
     x = float(ser.readline().decode("utf-8"))
     print("X:",x)
     y = float(ser.readline().decode("utf-8"))
@@ -69,28 +98,45 @@ while True:
     altit =  float(ser.readline().decode("utf-8"))
     print("Altitude:",altit)
 
+    press = 1020
+    temp = 20.30
+
+###########################################################################
+
+    ρ = 1.2
+    
+    #Air density
+
+    PitotVelocitySquared = pow(dp,2)/ρ
+
+    PitotVelocity= math.sqrt(PitotVelocitySquared)
+    #velocity from Pitot Tube    
+###########################################################################   
 
     with open('sensordata.csv', 'a') as csv_file:
         csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         info = {
-                "Time": t,
-                "X": x,
-                "Y": y,
-                "Z": z,
-                "Temperature": temp,
-                "AtmosphericPressure": press,
-                "Altitude": altit,
-                "DifferentialPressure(Pitot)": dp
+                "Time (s)": t,
+                "Acceleration (m/s^2)": accel,
+                "Velocity(Pitot)(m/s)": PitotVelocity,
+                "DifferentialPressure(Pitot)(Pa)": dp,
+                "Temperature (K)": temp,
+                "AtmosphericPressure (hPa)": press,
+                "Altitude(m)": altit,
             }
         csv_writer.writerow(info)
-    Xvar.append(x)
-    Tempvar.append(temp)
+
+    PitotVelocityvar.append(PitotVelocity)
+    Temperaturevar.append(temp)
+    Pressurevar.append(press)
     Timevar.append(t)
     drawnow(makeFig)
     plt.pause(.00001)
-    count +=1
     if(count>10):
-        Xvar.pop(0)
+        PitotVelocityvar.pop(0)
         Timevar.pop(0)
-        Tempvar.pop(0)
-
+        Temperaturevar.pop(0)
+        Pressurevar.pop(0)
+    finaldata= pd.read_csv('sensordata.csv')
+    finaldata.to_excel('finaldata.xlsx',sheet_name='SensorData',index=False)
+    print('data saved to excel')

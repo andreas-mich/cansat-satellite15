@@ -170,9 +170,9 @@ void loop() {
   rp.dp = 1000.00*((vout/1023.00) -0.04)/0.09 ; // in Pa;
 
   // BMP280
-  rp.temp = bmp.readTemperature();
+  rp.temp = bmp.readTemperature() - 2;
   rp.pres = bmp.readPressure()/100; //displaying the Pressure in hPa, you can change the unit
-  rp.altit = bmp.readAltitude(1019.66); //The "1019.66" is the pressure(hPa) at sea level in day in your region
+  rp.altit = bmp.readAltitude(1019.66) + 4; //The "1019.66" is the pressure(hPa) at sea level in day in your region
                                         //If you don't know it, modify it until you get your current altitude
 
   Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
@@ -180,9 +180,9 @@ void loop() {
   Serial.print("x="); Serial.print(rp.x); Serial.print("\n");
   Serial.print("y="); Serial.print(rp.y); Serial.print("\n");
   Serial.print("z="); Serial.print(rp.z); Serial.print("\n");
-  Serial.print("temperature= "); Serial.print(rp.temp); Serial.print("C"); Serial.print("\n");
+  Serial.print("temperature= "); Serial.print(rp.temp - 2); Serial.print("C"); Serial.print("\n");
   Serial.print("pressure= "); Serial.print(rp.pres); Serial.print("\n");
-  Serial.print("altitude= "); Serial.print(rp.altit); Serial.print("\n");
+  Serial.print("altitude= "); Serial.print(rp.altit + 4); Serial.print("\n");
   Serial.print("diff pressure="); Serial.print(rp.dp); Serial.print("\n");
   Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
 

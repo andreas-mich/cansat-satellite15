@@ -124,6 +124,7 @@ void loop() {
       //Serial.print(" RSSI: ");
       //Serial.println(rf69.lastRssi(), DEC);
       Serial.println(rp.t);
+      Serial.println(sqrt(pow(rp.x, 2) + pow(rp.y, 2) + pow(rp.z, 2)));
       Serial.println(rp.x);
       Serial.println(rp.y);
       Serial.println(rp.z);
