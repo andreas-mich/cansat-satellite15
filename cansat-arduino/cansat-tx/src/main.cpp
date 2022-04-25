@@ -6,28 +6,31 @@
 #include <Arduino.h>
 #include <Adafruit_BMP280.h>
 
-////////////////////////
-// ADXL345 accelerometer
-////////////////////////
 
-// Assign a unique ID to this sensor at the same time
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
+//********************************************  GYROSCOPE  ********************************************//  
 
-///////////////////
-// Manometer sensor
-///////////////////
+const int MPU_ADDR = 0x68; // I2C address of the MPU-6050. If AD0 pin is set to HIGH, the I2C address will be 0x69.
 
-int DPPin = A0;
+int16_t accelerometer_x, accelerometer_y, accelerometer_z; // variables for accelerometer raw data
+int16_t gyro_x, gyro_y, gyro_z; // variables for gyro raw data
+int16_t temperature; // variables for temperature data
 
-/////////////////////
-// BMP sensor
-/////////////////////
+char tmp_str[7]; // temporary variable used in convert function
+
+char* convert_int16_to_str(int16_t i) { // converts int16 to string. Moreover, resulting strings will have the same length in the debug monitor.
+  sprintf(tmp_str, "%6d", i);
+  return tmp_str;
+}
+
+//********************************************  BUZZER  ********************************************//  
+
+const int buzzer = 11; //buzzer to arduino pin 11
+
+//********************************************  BMP SENSOR  ********************************************//  
 
 Adafruit_BMP280 bmp; // I2C Interface
 
-//////////////////////////
-// Radio Transceiver setup
-//////////////////////////
+//********************************************  RF SETUP  ********************************************//  
 
 #define ADAFRUIT_FEATHER_M0
 #define RF69_FREQ     433.0
@@ -38,41 +41,18 @@ Adafruit_BMP280 bmp; // I2C Interface
 
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
-
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
-////////////////////////
-//      SETUP
-////////////////////////
+
 
 void setup() 
 {
   // Initialise serial port to PC for debugging purposes
   Serial.begin(115200);
-  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
+  while (!Serial) { delay(1000); } // wait until serial console is open, remove if not tethered to computer
   Serial.println("1. Starting");
 
-  ////////////////////////
-  // ADXL345 accelerometer
-  ////////////////////////
-
-  // Initialise the sensor
-  if(!accel.begin())
-  {
-    Serial.println("2. ADXL345: Not detected!");
-  } else {
-    Serial.println("2. ADXL345: detected!");
-  }
-
-  // Set the range to whatever is appropriate for your project
-  accel.setRange(ADXL345_RANGE_16_G);
-  // accel.setRange(ADXL345_RANGE_8_G);
-  // accel.setRange(ADXL345_RANGE_4_G);
-  // accel.setRange(ADXL345_RANGE_2_G);
-
-  ////////////////////
-  // BMP sensor
-  ////////////////////
+//********************************************  BMP SENSOR  ********************************************//  
 
   // Initialise the sensor
   if(!bmp.begin())
@@ -83,15 +63,26 @@ void setup()
   }
 
   // Default settings from datasheet
-  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
-                  Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
-                  Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                  Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                  Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
+  bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     // Operating Mode
+                  Adafruit_BMP280::SAMPLING_X2,     // Temp. oversampling
+                  Adafruit_BMP280::SAMPLING_X16,    // Pressure oversampling
+                  Adafruit_BMP280::FILTER_X16,      // Filtering
+                  Adafruit_BMP280::STANDBY_MS_500); // Standby time
 
-  ////////////////////
-  // RFM69 transceiver
-  ////////////////////
+//********************************************  BUZZER  ********************************************//  
+
+  pinMode(buzzer, OUTPUT); // Set buzzer - pin 9 as an output
+  
+  //********************************************  GYROSCOPE  ********************************************//  
+
+  Serial.begin(9600);
+  Wire.begin();
+  Wire.beginTransmission(MPU_ADDR); // Begins a transmission to the I2C slave (GY-521 board)
+  Wire.write(0x6B); // PWR_MGMT_1 register
+  Wire.write(0); // set to zero (wakes up the MPU-6050)
+  Wire.endTransmission(true);
+
+//********************************************  RFM69 TRANSCEIVER  ********************************************//  
 
   pinMode(LED, OUTPUT);     
   pinMode(RFM69_RST, OUTPUT);
@@ -131,59 +122,98 @@ void setup()
   Serial.print("4. RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
-////////////////////////
-//       LOOP
-////////////////////////
+
 
 void loop() {
 
-  ////////////////////
-  // RFM69 transceiver
-  ////////////////////
+//********************************************  RFM69 TRANSCEIVER  ********************************************//  
 
   // Total size = 32 bytes
   // 1x unsigned long 4 bytes = 4 bytes
   // 7x float 4 bytes = 28 bytes
   struct radiopacket {
     unsigned long t; // time is in milliseconds
-    float x;
-    float y;
-    float z;
+
     float dp;
+
     float temp;
     float pres;
     float altit;
+
+    float aX;
+    float aY;
+    float aZ;
+    float tmp;
+    float gX;
+    float gY;
+    float gZ;
   } rp;
 
-  // Time of reading
+  // TIME OF READING
   rp.t = millis(); // could not use event.timestamp as it is always 0 for this sensor
 
-  // ADXL345 accelerometer
-  sensors_event_t event; 
-  accel.getEvent(&event);
-  rp.x = event.acceleration.x;
-  rp.y = event.acceleration.y;
-  rp.z = event.acceleration.z;
-
-  // Manometer
-  float vout = analogRead(DPPin);  // read the input pin
-  rp.dp = 1000.00*((vout/1023.00) -0.04)/0.09 ; // in Pa;
+  //MANOMETER
+  int sensorValue = analogRead(A0); // read the input on analog pin 0:
+  rp.dp = sensorValue;
 
   // BMP280
   rp.temp = bmp.readTemperature() - 2;
   rp.pres = bmp.readPressure()/100; //displaying the Pressure in hPa, you can change the unit
   rp.altit = bmp.readAltitude(1019.66) + 4; //The "1019.66" is the pressure(hPa) at sea level in day in your region
-                                        //If you don't know it, modify it until you get your current altitude
+                                            //If you don't know it, modify it until you get your current altitude
 
+
+  // GYROSCOPE
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H) [MPU-6000 and MPU-6050 Register Map and Descriptions Revision 4.2, p.40]
+  Wire.endTransmission(false); // the parameter indicates that the Arduino will send a restart. As a result, the connection is kept active.
+  Wire.requestFrom(MPU_ADDR, 7*2, true); // request a total of 7*2=14 registers
+  
+  // "Wire.read()<<8 | Wire.read();" means two registers are read and stored in the same variable
+  accelerometer_x = Wire.read()<<8 | Wire.read(); // reading registers: 0x3B (ACCEL_XOUT_H) and 0x3C (ACCEL_XOUT_L)
+  accelerometer_y = Wire.read()<<8 | Wire.read(); // reading registers: 0x3D (ACCEL_YOUT_H) and 0x3E (ACCEL_YOUT_L)
+  accelerometer_z = Wire.read()<<8 | Wire.read(); // reading registers: 0x3F (ACCEL_ZOUT_H) and 0x40 (ACCEL_ZOUT_L)
+  temperature = Wire.read()<<8 | Wire.read(); // reading registers: 0x41 (TEMP_OUT_H) and 0x42 (TEMP_OUT_L)
+  gyro_x = Wire.read()<<8 | Wire.read(); // reading registers: 0x43 (GYRO_XOUT_H) and 0x44 (GYRO_XOUT_L)
+  gyro_y = Wire.read()<<8 | Wire.read(); // reading registers: 0x45 (GYRO_YOUT_H) and 0x46 (GYRO_YOUT_L)
+  gyro_z = Wire.read()<<8 | Wire.read(); // reading registers: 0x47 (GYRO_ZOUT_H) and 0x48 (GYRO_ZOUT_L)
+  
+  rp.aX = accelerometer_x;
+  rp.aY = accelerometer_y;
+  rp.aZ = accelerometer_z;
+  rp.tmp = temperature/340.00+36.53;
+  rp.gX = gyro_x;
+  rp.gY = gyro_y;
+  rp.gZ = gyro_z;
+
+  // BUZZER
+  tone(buzzer, 1000); // Send 1KHz sound signal...
+  delay(1000);        // ...for 1 sec
+  noTone(buzzer);     // Stop sound...
+  delay(1000);        // ...for 1sec
+  
+
+  //PRINT DATA SENT
   Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-  Serial.print("t="); Serial.print(rp.t); Serial.print("\n");
-  Serial.print("x="); Serial.print(rp.x); Serial.print("\n");
-  Serial.print("y="); Serial.print(rp.y); Serial.print("\n");
-  Serial.print("z="); Serial.print(rp.z); Serial.print("\n");
-  Serial.print("temperature= "); Serial.print(rp.temp - 2); Serial.print("C"); Serial.print("\n");
-  Serial.print("pressure= "); Serial.print(rp.pres); Serial.print("\n");
-  Serial.print("altitude= "); Serial.print(rp.altit + 4); Serial.print("\n");
-  Serial.print("diff pressure="); Serial.print(rp.dp); Serial.print("\n");
+  
+  int timeNew = rp.t / 1000;
+  Serial.print("Time: "); Serial.print(timeNew); Serial.println(" seconds");
+
+  Serial.print("Differential pressure: "); Serial.print(rp.dp); Serial.println(" pascal");
+  Serial.print("Velocity from pitot: "); Serial.print(sqrt(2 * rp.dp / 1.225)); Serial.println("m/s");
+
+  Serial.print("Temperature1: "); Serial.print(rp.temp); Serial.println(" C");
+  Serial.print("Pressure: "); Serial.print(rp.pres); Serial.println(" hpascal");
+  Serial.print("Altitude: "); Serial.print(rp.altit); Serial.println(" meters");
+
+  Serial.print("Accelerometer X: "); Serial.print(rp.aX); Serial.println(" m/s^2");
+  Serial.print("Accelerometer Y: "); Serial.print(rp.aY); Serial.println(" m/s^2");
+  Serial.print("Accelerometer Z: "); Serial.print(rp.aZ); Serial.println(" m/s^2");
+  Serial.print("Temperature 2: "); Serial.print(rp.tmp); Serial.println(" C");
+  Serial.print("Gyroscope X: "); Serial.print(rp.gX); Serial.println(" m");
+  Serial.print("Gyroscope Y: "); Serial.print(rp.gY); Serial.println(" m");
+  Serial.print("Gyroscope Z: "); Serial.print(rp.gZ); Serial.println(" m");
+
   Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
 
   rf69.send((uint8_t *)&rp, sizeof(rp));
