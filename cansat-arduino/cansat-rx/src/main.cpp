@@ -96,13 +96,20 @@ void loop() {
   // Total size = 32 bytes
   struct radiopacket {
     unsigned long t; // time is in milliseconds
-    float x;
-    float y;
-    float z;
+
     float dp;
+
     float temp;
     float pres;
     float altit;
+
+    float aX;
+    float aY;
+    float aZ;
+    float tmp;
+    float gX;
+    float gY;
+    float gZ;
   };
 
   if (rf69.available()) {
@@ -113,28 +120,22 @@ void loop() {
       if (!len) return;
       //buf[len] = 0; // why is this?
       radiopacket (&rp) = (radiopacket (&))(*(buf));
-      //Serial.print("Received [");
-      //Serial.print(len);
-      //Serial.print("]: ");
-      //Serial.print("     t: "); Serial.println(rp.t);
-      //Serial.print(",    x: "); Serial.println(rp.x);
-      //Serial.print(",    y: "); Serial.println(rp.y);
-      //Serial.print(",    z: "); Serial.println(rp.z);
-      //Serial.print(",    temp: "); Serial.println(rp.temp);
-      //Serial.print(" RSSI: ");
-      //Serial.println(rf69.lastRssi(), DEC);
       Serial.println(rp.t);
-      Serial.println(sqrt(pow(rp.x, 2) + pow(rp.y, 2) + pow(rp.z, 2)));
-      Serial.println(rp.x);
-      Serial.println(rp.y);
-      Serial.println(rp.z);
+
       Serial.println(rp.dp);
+
       Serial.println(rp.temp);
       Serial.println(rp.pres);
       Serial.println(rp.altit);
-    } else {
-      //Serial.println("Receive failed");
-    }
+
+      Serial.println(rp.aX);
+      Serial.println(rp.aY);
+      Serial.println(rp.aZ);
+      Serial.println(rp.tmp);
+      Serial.println(rp.gX);
+      Serial.println(rp.gY);
+      Serial.println(rp.gZ);
+    } 
   }
 }
 

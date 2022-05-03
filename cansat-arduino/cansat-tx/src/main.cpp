@@ -5,22 +5,19 @@
 #include <Adafruit_ADXL345_U.h>
 #include <Arduino.h>
 #include <Adafruit_BMP280.h>
+#include <SD.h>
 
+//********************************************  ACCELEROMETER  ********************************************//  
 
-//********************************************  GYROSCOPE  ********************************************//  
+// Assign a unique ID to this sensor at the same time
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
+float X_out, Y_out, Z_out;  // Outputs
+float roll,pitch,rollF,pitchF=0;
 
-const int MPU_ADDR = 0x68; // I2C address of the MPU-6050. If AD0 pin is set to HIGH, the I2C address will be 0x69.
-
-int16_t accelerometer_x, accelerometer_y, accelerometer_z; // variables for accelerometer raw data
-int16_t gyro_x, gyro_y, gyro_z; // variables for gyro raw data
-int16_t temperature; // variables for temperature data
-
-char tmp_str[7]; // temporary variable used in convert function
-
-char* convert_int16_to_str(int16_t i) { // converts int16 to string. Moreover, resulting strings will have the same length in the debug monitor.
-  sprintf(tmp_str, "%6d", i);
-  return tmp_str;
-}
+//unsigned long t = 0;
+//unsigned long tx_t = 0;
+//int sample_rate = 100;
+//int tx_rate = 500;
 
 //********************************************  BUZZER  ********************************************//  
 
@@ -43,13 +40,16 @@ Adafruit_BMP280 bmp; // I2C Interface
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
+//********************************************  SD SETUP  ********************************************//  
+
+#define SD_CSPIN      4
 
 
 void setup() 
 {
   // Initialise serial port to PC for debugging purposes
   Serial.begin(115200);
-  while (!Serial) { delay(1000); } // wait until serial console is open, remove if not tethered to computer
+  while (!Serial) { delay(1); } // wait until serial console is open, remove if not tethered to computer
   Serial.println("1. Starting");
 
 //********************************************  BMP SENSOR  ********************************************//  
@@ -73,14 +73,20 @@ void setup()
 
   pinMode(buzzer, OUTPUT); // Set buzzer - pin 9 as an output
   
-  //********************************************  GYROSCOPE  ********************************************//  
+//********************************************  GYROSCOPE  ********************************************//  
 
-  Serial.begin(9600);
-  Wire.begin();
-  Wire.beginTransmission(MPU_ADDR); // Begins a transmission to the I2C slave (GY-521 board)
-  Wire.write(0x6B); // PWR_MGMT_1 register
-  Wire.write(0); // set to zero (wakes up the MPU-6050)
-  Wire.endTransmission(true);
+  // Initialise the sensor
+  if(!accel.begin())
+  {
+    Serial.println("2. ADXL345: Not detected!");
+  } else {
+    Serial.println("2. ADXL345: detected!");
+  }
+  /* Set the range to whatever is appropriate for your project */
+  accel.setRange(ADXL345_RANGE_16_G);
+  // accel.setRange(ADXL345_RANGE_8_G);
+  // accel.setRange(ADXL345_RANGE_4_G);
+  // accel.setRange(ADXL345_RANGE_2_G);
 
 //********************************************  RFM69 TRANSCEIVER  ********************************************//  
 
@@ -101,7 +107,7 @@ void setup()
     Serial.println("4. RFM69 radio init failed");
     while (1);
   }
-  Serial.println("4. RFM69 radio init OK!");
+  //Serial.println("4. RFM69 radio init OK!");
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
   // No encryption
   if (!rf69.setFrequency(RF69_FREQ)) {
@@ -120,8 +126,18 @@ void setup()
   pinMode(LED, OUTPUT);
 
   Serial.print("4. RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
-}
 
+
+//********************************************  SD card  ********************************************// 
+
+  Serial.print("Initializing SD card...");
+  if (!SD.begin(SD_CSPIN)) {
+    Serial.println("initialization failed!");
+  } else {
+    Serial.println("initialization done.");
+  }
+
+}
 
 
 void loop() {
@@ -132,7 +148,7 @@ void loop() {
   // 1x unsigned long 4 bytes = 4 bytes
   // 7x float 4 bytes = 28 bytes
   struct radiopacket {
-    unsigned long t; // time is in milliseconds
+    unsigned long time; // time is in milliseconds
 
     float dp;
 
@@ -143,14 +159,10 @@ void loop() {
     float aX;
     float aY;
     float aZ;
-    float tmp;
-    float gX;
-    float gY;
-    float gZ;
   } rp;
 
   // TIME OF READING
-  rp.t = millis(); // could not use event.timestamp as it is always 0 for this sensor
+  rp.time = millis(); // could not use event.timestamp as it is always 0 for this sensor
 
   //MANOMETER
   int sensorValue = analogRead(A0); // read the input on analog pin 0:
@@ -164,60 +176,110 @@ void loop() {
 
 
   // GYROSCOPE
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H) [MPU-6000 and MPU-6050 Register Map and Descriptions Revision 4.2, p.40]
-  Wire.endTransmission(false); // the parameter indicates that the Arduino will send a restart. As a result, the connection is kept active.
-  Wire.requestFrom(MPU_ADDR, 7*2, true); // request a total of 7*2=14 registers
+  sensors_event_t event; 
+  accel.getEvent(&event);
+
+  rp.aX = event.acceleration.x;
+  rp.aY = event.acceleration.y;
+  rp.aZ = event.acceleration.z;
   
-  // "Wire.read()<<8 | Wire.read();" means two registers are read and stored in the same variable
-  accelerometer_x = Wire.read()<<8 | Wire.read(); // reading registers: 0x3B (ACCEL_XOUT_H) and 0x3C (ACCEL_XOUT_L)
-  accelerometer_y = Wire.read()<<8 | Wire.read(); // reading registers: 0x3D (ACCEL_YOUT_H) and 0x3E (ACCEL_YOUT_L)
-  accelerometer_z = Wire.read()<<8 | Wire.read(); // reading registers: 0x3F (ACCEL_ZOUT_H) and 0x40 (ACCEL_ZOUT_L)
-  temperature = Wire.read()<<8 | Wire.read(); // reading registers: 0x41 (TEMP_OUT_H) and 0x42 (TEMP_OUT_L)
-  gyro_x = Wire.read()<<8 | Wire.read(); // reading registers: 0x43 (GYRO_XOUT_H) and 0x44 (GYRO_XOUT_L)
-  gyro_y = Wire.read()<<8 | Wire.read(); // reading registers: 0x45 (GYRO_YOUT_H) and 0x46 (GYRO_YOUT_L)
-  gyro_z = Wire.read()<<8 | Wire.read(); // reading registers: 0x47 (GYRO_ZOUT_H) and 0x48 (GYRO_ZOUT_L)
+
+  // Calculate Roll and Pitch (rotation around X-axis, rotation around Y-axis)
+  roll = atan(Y_out / sqrt(pow(X_out, 2) + pow(Z_out, 2))) * 180 / PI;
+  pitch = atan(-1 * X_out / sqrt(pow(Y_out, 2) + pow(Z_out, 2))) * 180 / PI;
+
+  // Low-pass filter
+  rollF = 0.94 * rollF + 0.06 * roll;
+  pitchF = 0.94 * pitchF + 0.06 * pitch;
   
-  rp.aX = accelerometer_x;
-  rp.aY = accelerometer_y;
-  rp.aZ = accelerometer_z;
-  rp.tmp = temperature/340.00+36.53;
-  rp.gX = gyro_x;
-  rp.gY = gyro_y;
-  rp.gZ = gyro_z;
+  //delay(sample_rate);
+
+  //if (t - tx_t > tx_rate){
+    //transmit
+  //  tx_t = t;
+  //  }
+
 
   // BUZZER
   tone(buzzer, 1000); // Send 1KHz sound signal...
-  delay(1000);        // ...for 1 sec
+  //delay(1000);        // ...for 1 sec
   noTone(buzzer);     // Stop sound...
-  delay(1000);        // ...for 1sec
+  //delay(1000);        // ...for 1sec
   
 
   //PRINT DATA SENT
-  Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+  //Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
   
-  int timeNew = rp.t / 1000;
-  Serial.print("Time: "); Serial.print(timeNew); Serial.println(" seconds");
+  int timeNew = rp.time / 1000;
+  //Serial.print("Time: "); 
+  Serial.println(timeNew); //Serial.println(" seconds");
 
-  Serial.print("Differential pressure: "); Serial.print(rp.dp); Serial.println(" pascal");
-  Serial.print("Velocity from pitot: "); Serial.print(sqrt(2 * rp.dp / 1.225)); Serial.println("m/s");
+  //Serial.print("Differential pressure: "); 
+  Serial.println(rp.dp); //Serial.println(" pascal");
 
-  Serial.print("Temperature1: "); Serial.print(rp.temp); Serial.println(" C");
-  Serial.print("Pressure: "); Serial.print(rp.pres); Serial.println(" hpascal");
-  Serial.print("Altitude: "); Serial.print(rp.altit); Serial.println(" meters");
+  //Serial.print("Temperature1: "); 
+  Serial.println(rp.temp); //Serial.println(" C");
+  //Serial.print("Pressure: "); 
+  Serial.println(rp.pres+13); //Serial.println(" hpascal");
+  //Serial.print("Altitude: "); 
+  Serial.println(rp.altit); //Serial.println(" meters");
 
-  Serial.print("Accelerometer X: "); Serial.print(rp.aX); Serial.println(" m/s^2");
-  Serial.print("Accelerometer Y: "); Serial.print(rp.aY); Serial.println(" m/s^2");
-  Serial.print("Accelerometer Z: "); Serial.print(rp.aZ); Serial.println(" m/s^2");
-  Serial.print("Temperature 2: "); Serial.print(rp.tmp); Serial.println(" C");
-  Serial.print("Gyroscope X: "); Serial.print(rp.gX); Serial.println(" m");
-  Serial.print("Gyroscope Y: "); Serial.print(rp.gY); Serial.println(" m");
-  Serial.print("Gyroscope Z: "); Serial.print(rp.gZ); Serial.println(" m");
+  //Serial.print("Accelerometer X: "); 
+  Serial.println(rp.aX); //Serial.println(" m/s^2");
+  //Serial.print("Accelerometer Y: "); 
+  Serial.println(rp.aY); //Serial.println(" m/s^2");
+  //Serial.print("Accelerometer Z: "); 
+  Serial.println(rp.aZ); //Serial.println(" m/s^2");
 
   Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
 
   rf69.send((uint8_t *)&rp, sizeof(rp));
+  Serial.println("waitPacketSent");
   rf69.waitPacketSent();
+  Serial.println("Packet sent");
 
-  delay(989);  // Wait 1 second between transmits
+  // Write to SD card
+
+  Serial.println("Opening file");
+
+  File dataFile;
+
+  dataFile = SD.open("data.csv", FILE_WRITE);
+
+  if (!dataFile) {
+    Serial.println("Failed to open data file");
+  }
+
+  if (dataFile) {
+    dataFile.print(" "); // For some strange reason, the first print does not appear. Keep this!
+    dataFile.print(timeNew); //Serial.println(" seconds");
+    dataFile.print(",");
+
+    //Serial.print("Differential pressure: "); 
+    dataFile.print(rp.dp); //Serial.println(" pascal");
+    dataFile.print(",");
+
+    //Serial.print("Temperature1: "); 
+    dataFile.print(rp.temp); //Serial.println(" C");
+    dataFile.print(",");
+    //Serial.print("Pressure: "); 
+    dataFile.print(rp.pres+13); //Serial.println(" hpascal");
+    dataFile.print(",");
+    //Serial.print("Altitude: "); 
+    dataFile.print(rp.altit); //Serial.println(" meters");
+    dataFile.print(",");
+
+    //Serial.print("Accelerometer X: "); 
+    dataFile.print(rp.aX); //Serial.println(" m/s^2");
+    dataFile.print(",");
+    //Serial.print("Accelerometer Y: "); 
+    dataFile.print(rp.aY); //Serial.println(" m/s^2");
+    dataFile.print(",");
+    //Serial.print("Accelerometer Z: "); 
+    dataFile.println(rp.aZ); //Serial.println(" m/s^2");
+
+    dataFile.close();
+  }
+
+  delay(1000);  // Wait 1 second between transmits
 }
