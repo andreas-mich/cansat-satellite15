@@ -25,8 +25,10 @@ cube[:,2] = [0, 0, 1, 1, 0, 0, 1, 1]
 
 # First initialize the fig variable to a figure
 fig = plt.figure()
+fig2 = plt.figure()
 # Add a 3d axis to the figure
 ax = fig.add_subplot(111, projection='3d')
+ax2 = fig2.add_subplot(111, projection='3d')
 
 # plotting cube
 # Initialize a list of vertex coordinates for each face
@@ -63,17 +65,25 @@ faces[5][:,0] = [0,1,1,0,0]
 faces[5][:,1] = [1,1,1,1,1]
 faces[5][:,2] = [0,0,1,1,0]
 ax.add_collection3d(Poly3DCollection(faces, facecolors='cyan', linewidths=1, edgecolors='k', alpha=.25))
+ax2.add_collection3d(Poly3DCollection(faces, facecolors='red', linewidths=1, edgecolors='k', alpha=.25))
 
 # plotting lines
 ax.plot(cube[vertices[0,:],0],cube[vertices[0,:],1],cube[vertices[0,:],2],color='b')
 ax.plot(cube[vertices[1,:],0],cube[vertices[1,:],1],cube[vertices[1,:],2],color='b')
 ax.plot(cube[vertices[2,:],0],cube[vertices[2,:],1],cube[vertices[2,:],2],color='b')
+ax2.plot(cube[vertices[0,:],0],cube[vertices[0,:],1],cube[vertices[0,:],2],color='r')
+ax2.plot(cube[vertices[1,:],0],cube[vertices[1,:],1],cube[vertices[1,:],2],color='r')
+ax2.plot(cube[vertices[2,:],0],cube[vertices[2,:],1],cube[vertices[2,:],2],color='r')
 
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
+ax2.set_xlabel('X')
+ax2.set_ylabel('Y')
+ax2.set_zlabel('Z')
 
 ax.axis("off")
+ax2.axis("off")
 
 azimuth = 0
 elevation = 0
@@ -89,8 +99,19 @@ def update(frame_number):
     ax.set_title("azimuth: " + str(azimuth) + " / elevation: " + str(elevation) + " / roll: " + str(roll))
     ax.view_init(azim=azimuth, elev=elevation, roll=roll)
 
+def update2(frame_number):
+    global azimuth
+    global elevation
+    global roll
+    azimuth += 5
+    elevation += 5
+    roll += 5
+    ax2.set_title("azimuth: " + str(azimuth) + " / elevation: " + str(elevation) + " / roll: " + str(roll))
+    ax2.view_init(azim=azimuth, elev=elevation, roll=roll)
+
 # Construct the animation, using the update function as the animation director.
 animation = FuncAnimation(fig, update) # add interval=1000 if necessary
+animation2 = FuncAnimation(fig2, update2) # add interval=1000 if necessary
 
 plt.show()
 

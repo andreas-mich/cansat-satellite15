@@ -7,17 +7,14 @@
 #include <Adafruit_BMP280.h>
 #include <SD.h>
 
+//********************************************  GENERAL ********************************************//  
+
+#define READ_DELAY   500
+
 //********************************************  ACCELEROMETER  ********************************************//  
 
 // Assign a unique ID to this sensor at the same time
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-float X_out, Y_out, Z_out;  // Outputs
-float roll,pitch,rollF,pitchF=0;
-
-//unsigned long t = 0;
-//unsigned long tx_t = 0;
-//int sample_rate = 100;
-//int tx_rate = 500;
 
 //********************************************  BUZZER  ********************************************//  
 
@@ -57,9 +54,9 @@ void setup()
   // Initialise the sensor
   if(!bmp.begin())
   {
-    Serial.println("3. BMP280: Not detected!");
+    Serial.println("2. BMP280: Not detected!");
   } else {
-    Serial.println("3. BMP280: detected!");
+    Serial.println("2. BMP280: detected!");
   }
 
   // Default settings from datasheet
@@ -78,9 +75,9 @@ void setup()
   // Initialise the sensor
   if(!accel.begin())
   {
-    Serial.println("2. ADXL345: Not detected!");
+    Serial.println("3. ADXL345: Not detected!");
   } else {
-    Serial.println("2. ADXL345: detected!");
+    Serial.println("3. ADXL345: detected!");
   }
   /* Set the range to whatever is appropriate for your project */
   accel.setRange(ADXL345_RANGE_16_G);
@@ -130,11 +127,11 @@ void setup()
 
 //********************************************  SD card  ********************************************// 
 
-  Serial.print("Initializing SD card...");
+  Serial.print("5. Initializing SD card...");
   if (!SD.begin(SD_CSPIN)) {
-    Serial.println("initialization failed!");
+    Serial.println("5. initialization failed!");
   } else {
-    Serial.println("initialization done.");
+    Serial.println("5. initialization done.");
   }
 
 }
@@ -184,35 +181,15 @@ void loop() {
   rp.aZ = event.acceleration.z;
   
 
-  // Calculate Roll and Pitch (rotation around X-axis, rotation around Y-axis)
-  roll = atan(Y_out / sqrt(pow(X_out, 2) + pow(Z_out, 2))) * 180 / PI;
-  pitch = atan(-1 * X_out / sqrt(pow(Y_out, 2) + pow(Z_out, 2))) * 180 / PI;
-
-  // Low-pass filter
-  rollF = 0.94 * rollF + 0.06 * roll;
-  pitchF = 0.94 * pitchF + 0.06 * pitch;
-  
-  //delay(sample_rate);
-
-  //if (t - tx_t > tx_rate){
-    //transmit
-  //  tx_t = t;
-  //  }
-
-
   // BUZZER
   tone(buzzer, 1000); // Send 1KHz sound signal...
   //delay(1000);        // ...for 1 sec
   noTone(buzzer);     // Stop sound...
   //delay(1000);        // ...for 1sec
   
-
-  //PRINT DATA SENT
-  //Serial.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-  
-  int timeNew = rp.time / 1000;
+  int timeSec = rp.time / 1000;
   //Serial.print("Time: "); 
-  Serial.println(timeNew); //Serial.println(" seconds");
+  Serial.println(timeSec); //Serial.println(" seconds");
 
   //Serial.print("Differential pressure: "); 
   Serial.println(rp.dp); //Serial.println(" pascal");
@@ -220,7 +197,7 @@ void loop() {
   //Serial.print("Temperature1: "); 
   Serial.println(rp.temp); //Serial.println(" C");
   //Serial.print("Pressure: "); 
-  Serial.println(rp.pres+13); //Serial.println(" hpascal");
+  Serial.println(rp.pres); //Serial.println(" hpascal");
   //Serial.print("Altitude: "); 
   Serial.println(rp.altit); //Serial.println(" meters");
 
@@ -252,7 +229,9 @@ void loop() {
 
   if (dataFile) {
     dataFile.print(" "); // For some strange reason, the first print does not appear. Keep this!
-    dataFile.print(timeNew); //Serial.println(" seconds");
+    dataFile.print(rp.time); //Serial.println(" seconds");
+    dataFile.print(",");
+    dataFile.print(timeSec); //Serial.println(" seconds");
     dataFile.print(",");
 
     //Serial.print("Differential pressure: "); 
@@ -263,7 +242,7 @@ void loop() {
     dataFile.print(rp.temp); //Serial.println(" C");
     dataFile.print(",");
     //Serial.print("Pressure: "); 
-    dataFile.print(rp.pres+13); //Serial.println(" hpascal");
+    dataFile.print(rp.pres); //Serial.println(" hpascal");
     dataFile.print(",");
     //Serial.print("Altitude: "); 
     dataFile.print(rp.altit); //Serial.println(" meters");
@@ -281,5 +260,5 @@ void loop() {
     dataFile.close();
   }
 
-  delay(1000);  // Wait 1 second between transmits
+  delay(READ_DELAY);  // Wait between sensor readings and transmits
 }

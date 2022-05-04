@@ -91,7 +91,7 @@ void setup()
 
 void loop() {
 
-  delay(1000);
+  //delay(500);
 
   // Total size = 32 bytes
   struct radiopacket {
@@ -131,7 +131,7 @@ void loop() {
   }
 }
 
-
+/*
 void Blink(byte PIN, byte DELAY_MS, byte loops) {
   for (byte i=0; i<loops; i++)  {
     digitalWrite(PIN,HIGH);
@@ -140,3 +140,4 @@ void Blink(byte PIN, byte DELAY_MS, byte loops) {
     delay(DELAY_MS);
   }
 }
+*/
