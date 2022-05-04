@@ -106,10 +106,6 @@ void loop() {
     float aX;
     float aY;
     float aZ;
-    float tmp;
-    float gX;
-    float gY;
-    float gZ;
   };
 
   if (rf69.available()) {
@@ -131,10 +127,6 @@ void loop() {
       Serial.println(rp.aX);
       Serial.println(rp.aY);
       Serial.println(rp.aZ);
-      Serial.println(rp.tmp);
-      Serial.println(rp.gX);
-      Serial.println(rp.gY);
-      Serial.println(rp.gZ);
     } 
   }
 }
