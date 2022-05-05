@@ -16,7 +16,7 @@
 #define __AVR_ATmega328P__
 
 // Change to 434.0 or other frequency, must match RX's freq!
-#define RF69_FREQ 433.0
+#define RF69_FREQ 434.0
 
 
 #define RFM69_INT     3  // 

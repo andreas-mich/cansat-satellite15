@@ -9,7 +9,7 @@
 
 //********************************************  GENERAL ********************************************//  
 
-#define READ_DELAY   500
+#define READ_DELAY   1000
 
 //********************************************  ACCELEROMETER  ********************************************//  
 
@@ -27,7 +27,7 @@ Adafruit_BMP280 bmp; // I2C Interface
 //********************************************  RF SETUP  ********************************************//  
 
 #define ADAFRUIT_FEATHER_M0
-#define RF69_FREQ     433.0
+#define RF69_FREQ     434.0
 #define RFM69_CS      6
 #define RFM69_INT     9
 #define RFM69_RST     10
@@ -37,9 +37,6 @@ Adafruit_BMP280 bmp; // I2C Interface
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
-//********************************************  SD SETUP  ********************************************//  
-
-#define SD_CSPIN      4
 
 
 void setup() 
@@ -81,9 +78,6 @@ void setup()
   }
   /* Set the range to whatever is appropriate for your project */
   accel.setRange(ADXL345_RANGE_16_G);
-  // accel.setRange(ADXL345_RANGE_8_G);
-  // accel.setRange(ADXL345_RANGE_4_G);
-  // accel.setRange(ADXL345_RANGE_2_G);
 
 //********************************************  RFM69 TRANSCEIVER  ********************************************//  
 
@@ -124,17 +118,8 @@ void setup()
 
   Serial.print("4. RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 
-
-//********************************************  SD card  ********************************************// 
-
-  Serial.print("5. Initializing SD card...");
-  if (!SD.begin(SD_CSPIN)) {
-    Serial.println("5. initialization failed!");
-  } else {
-    Serial.println("5. initialization done.");
-  }
-
 }
+
 
 
 void loop() {
@@ -182,10 +167,10 @@ void loop() {
   
 
   // BUZZER
-  tone(buzzer, 1000); // Send 1KHz sound signal...
-  //delay(1000);        // ...for 1 sec
+  tone(buzzer, 1500); // Send 1KHz sound signal...
+  delay(1000);        // ...for 1 sec
   noTone(buzzer);     // Stop sound...
-  //delay(1000);        // ...for 1sec
+  delay(100);        // ...for 1sec
   
   int timeSec = rp.time / 1000;
   //Serial.print("Time: "); 
@@ -214,51 +199,6 @@ void loop() {
   Serial.println("waitPacketSent");
   rf69.waitPacketSent();
   Serial.println("Packet sent");
-
-  // Write to SD card
-
-  Serial.println("Opening file");
-
-  File dataFile;
-
-  dataFile = SD.open("data.csv", FILE_WRITE);
-
-  if (!dataFile) {
-    Serial.println("Failed to open data file");
-  }
-
-  if (dataFile) {
-    dataFile.print(" "); // For some strange reason, the first print does not appear. Keep this!
-    dataFile.print(rp.time); //Serial.println(" seconds");
-    dataFile.print(",");
-    dataFile.print(timeSec); //Serial.println(" seconds");
-    dataFile.print(",");
-
-    //Serial.print("Differential pressure: "); 
-    dataFile.print(rp.dp); //Serial.println(" pascal");
-    dataFile.print(",");
-
-    //Serial.print("Temperature1: "); 
-    dataFile.print(rp.temp); //Serial.println(" C");
-    dataFile.print(",");
-    //Serial.print("Pressure: "); 
-    dataFile.print(rp.pres); //Serial.println(" hpascal");
-    dataFile.print(",");
-    //Serial.print("Altitude: "); 
-    dataFile.print(rp.altit); //Serial.println(" meters");
-    dataFile.print(",");
-
-    //Serial.print("Accelerometer X: "); 
-    dataFile.print(rp.aX); //Serial.println(" m/s^2");
-    dataFile.print(",");
-    //Serial.print("Accelerometer Y: "); 
-    dataFile.print(rp.aY); //Serial.println(" m/s^2");
-    dataFile.print(",");
-    //Serial.print("Accelerometer Z: "); 
-    dataFile.println(rp.aZ); //Serial.println(" m/s^2");
-
-    dataFile.close();
-  }
 
   delay(READ_DELAY);  // Wait between sensor readings and transmits
 }

@@ -51,7 +51,7 @@ def makeFig():
     colors[cuboid] = 'red'
     # plot 3d figure
     ax = plt.subplot(1,4,1, projection='3d')
-    ax.voxels(cuboid, facecolors=colors, edgecolor='white')
+    ax.voxels(cuboid, facecolors=colors) #edgecolor='white'
     ax.axis("off")
     # change pitch and roll
     ax.view_init(azim=30, elev=pitch, roll=roll)
@@ -93,7 +93,7 @@ def makeFig():
     plt.xlabel('Time')
     plt.ticklabel_format(useOffset=False)
     plt2=plt.twinx()
-    #plt.ylim(...)
+    plt.ylim(800,1100)
     plt2.plot(Timevar,Pressurevar,label='Atmospheric Pressure')
     #plt2.set_ylabel('A. Pressure')
     plt2.legend(loc='best')
@@ -107,7 +107,7 @@ plt.ion()
 fieldnames = [
     "Time (s)",
     "Time (ms)",
-    "DifferentialPressure(Pitot)(Pa)",
+    "DifferentialPressure(Voltage)",
     "Temperature 1 (C)",
     "AtmosphericPressure (hPa)",
     "Altitude(m)",
@@ -115,7 +115,8 @@ fieldnames = [
     "Accel. Y (m/s^2)",
     "Accel. Z (m/s^2)",
     "PitotVelocity (m/s)",
-    "AltitudeVelocity (m/s)"
+    "AltitudeVelocity (m/s)",
+    "DifferentialPressure(Pa)"
     ]
 
 ###############################################  Open Serial Port  ###############################################
@@ -146,7 +147,7 @@ while True:
     t_sec = round(t / 1000)
     print("Time:",t_sec)   
     dp =  float(ser.readline().decode("utf-8"))
-    print("Differential Pressure:",dp)
+    print("Differential Pressure Voltage:",dp)
     temp1 = float(ser.readline().decode("utf-8"))
     print("Temperature (Sensor):",temp1)
     press =  float(ser.readline().decode("utf-8"))
@@ -198,9 +199,12 @@ while True:
     ro = ((Pd / (Rd * Tkelvin)) + (Pv / (Rv * Tkelvin)))*100
     #Air density
     
-    differentialPressure = 1000 * (((5*dp)/3.3))-2.5
+    differentialPressure = (10000*(((dp-38.5)/1023)-0.5)/2)
+    #print("Differential Pressure:",differentialPressure)
+    #Differential Pressure Pitot Tube
 
     PitotVelocity = sqrt(abs(((dp-38.5)/1023)-0.5)*10000/ro)
+    #print("Pitot Velocity:",PitotVelocity)
     #velocity from Pitot Tube
     
     ################################# Add to Figure Data and Draw Figure ################################# 
@@ -229,7 +233,7 @@ while True:
         info = {
                 "Time (s)": t_sec,
                 "Time (ms)": t,
-                "DifferentialPressure(Pitot)(Pa)": dp,
+                "DifferentialPressure(Voltage)": dp,
                 "Temperature 1 (C)": temp1,
                 "AtmosphericPressure (hPa)": press,
                 "Altitude(m)": altit,
@@ -237,7 +241,8 @@ while True:
                 "Accel. Y (m/s^2)": ay,
                 "Accel. Z (m/s^2)": az,
                 "PitotVelocity (m/s)": PitotVelocity,
-                "AltitudeVelocity (m/s)": AltitudeVelocity
+                "AltitudeVelocity (m/s)": AltitudeVelocity,
+                "DifferentialPressure(Pa)": differentialPressure
                 }
         csv_writer.writerow(info)
         print('data saved to csv')
