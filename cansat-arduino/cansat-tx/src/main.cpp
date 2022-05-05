@@ -9,7 +9,7 @@
 
 //********************************************  GENERAL ********************************************//  
 
-#define READ_DELAY   1000
+#define READ_DELAY   500  // configure delay
 
 //********************************************  ACCELEROMETER  ********************************************//  
 
@@ -67,7 +67,7 @@ void setup()
 
   pinMode(buzzer, OUTPUT); // Set buzzer - pin 9 as an output
   
-//********************************************  GYROSCOPE  ********************************************//  
+//********************************************  ACCELEROMETER  ********************************************//  
 
   // Initialise the sensor
   if(!accel.begin())
@@ -76,7 +76,6 @@ void setup()
   } else {
     Serial.println("3. ADXL345: detected!");
   }
-  /* Set the range to whatever is appropriate for your project */
   accel.setRange(ADXL345_RANGE_16_G);
 
 //********************************************  RFM69 TRANSCEIVER  ********************************************//  
@@ -132,32 +131,31 @@ void loop() {
   struct radiopacket {
     unsigned long time; // time is in milliseconds
 
-    float dp;
+    float dp; // differential pressure is in pascal
 
-    float temp;
-    float pres;
-    float altit;
+    float temp; // temperature is in °C
+    float pres; // atmospheric pressure is in hpascal 
+    float altit; // altitude is in meters
 
-    float aX;
-    float aY;
-    float aZ;
+    float aX; // acceleration X is in m/s^2 (g)
+    float aY; // acceleration Y is in m/s^2 (g)
+    float aZ; // acceleration Z is in m/s^2 (g)
   } rp;
 
   // TIME OF READING
   rp.time = millis(); // could not use event.timestamp as it is always 0 for this sensor
 
-  //MANOMETER
+  // MANOMETER
   int sensorValue = analogRead(A0); // read the input on analog pin 0:
   rp.dp = sensorValue;
 
   // BMP280
-  rp.temp = bmp.readTemperature() - 2;
+  rp.temp = bmp.readTemperature(); // probably needs calibration
   rp.pres = bmp.readPressure()/100; //displaying the Pressure in hPa, you can change the unit
-  rp.altit = bmp.readAltitude(1019.66) + 4; //The "1019.66" is the pressure(hPa) at sea level in day in your region
-                                            //If you don't know it, modify it until you get your current altitude
+  rp.altit = bmp.readAltitude(1019.66); //The "1019.66" is the pressure(hPa) at sea level in day in your region
+                                        //If you don't know it, modify it until you get your current altitude
 
-
-  // GYROSCOPE
+  // ACCELEROMETER
   sensors_event_t event; 
   accel.getEvent(&event);
 
@@ -165,35 +163,30 @@ void loop() {
   rp.aY = event.acceleration.y;
   rp.aZ = event.acceleration.z;
   
-
   // BUZZER
-  tone(buzzer, 1500); // Send 1KHz sound signal...
-  delay(1000);        // ...for 1 sec
-  noTone(buzzer);     // Stop sound...
-  delay(100);        // ...for 1sec
+  //tone(buzzer, 1500); // Send 1KHz sound signal...
+  //delay(1000);        // ...for 1 sec
+  //noTone(buzzer);     // Stop sound...
+  //delay(100);        // ...for 1sec
   
+
+  // Print data (debagging purposes)
   int timeSec = rp.time / 1000;
-  //Serial.print("Time: "); 
-  Serial.println(timeSec); //Serial.println(" seconds");
+  Serial.println(timeSec);
+ 
+  Serial.println(rp.dp); 
+ 
+  Serial.println(rp.temp); 
+  Serial.println(rp.pres); 
+  Serial.println(rp.altit); 
 
-  //Serial.print("Differential pressure: "); 
-  Serial.println(rp.dp); //Serial.println(" pascal");
-
-  //Serial.print("Temperature1: "); 
-  Serial.println(rp.temp); //Serial.println(" C");
-  //Serial.print("Pressure: "); 
-  Serial.println(rp.pres); //Serial.println(" hpascal");
-  //Serial.print("Altitude: "); 
-  Serial.println(rp.altit); //Serial.println(" meters");
-
-  //Serial.print("Accelerometer X: "); 
-  Serial.println(rp.aX); //Serial.println(" m/s^2");
-  //Serial.print("Accelerometer Y: "); 
-  Serial.println(rp.aY); //Serial.println(" m/s^2");
-  //Serial.print("Accelerometer Z: "); 
-  Serial.println(rp.aZ); //Serial.println(" m/s^2");
+  Serial.println(rp.aX);
+  Serial.println(rp.aY);
+  Serial.println(rp.aZ);
 
   Serial.print("Sending "); Serial.print(sizeof(rp)); Serial.println(" bytes");
+
+  // send radiopacket
 
   rf69.send((uint8_t *)&rp, sizeof(rp));
   Serial.println("waitPacketSent");

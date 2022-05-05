@@ -116,7 +116,6 @@ fieldnames = [
     "Accel. Z (m/s^2)",
     "PitotVelocity (m/s)",
     "AltitudeVelocity (m/s)",
-    "DifferentialPressure(Pa)"
     ]
 
 ###############################################  Open Serial Port  ###############################################
@@ -172,11 +171,11 @@ while True:
     ################################# Compute Differential Altitude ################################# 
     if count == 1:
         h1 = altit
-        t1 = t
+        t1 = t_sec
         AltitudeVelocity = 0
     elif count > 1:
         h2 = altit
-        t2 = t
+        t2 = t_sec
         AltitudeVelocity = (h2-h1)/(t2-t1)
         h1 = h2
         t1 = t2
@@ -199,7 +198,7 @@ while True:
     ro = ((Pd / (Rd * Tkelvin)) + (Pv / (Rv * Tkelvin)))*100
     #Air density
     
-    differentialPressure = (10000*(((dp-38.5)/1023)-0.5)/2)
+    #differentialPressure = (10000*(((dp-38.5)/1023)-0.5)/2)
     #print("Differential Pressure:",differentialPressure)
     #Differential Pressure Pitot Tube
 
@@ -241,8 +240,7 @@ while True:
                 "Accel. Y (m/s^2)": ay,
                 "Accel. Z (m/s^2)": az,
                 "PitotVelocity (m/s)": PitotVelocity,
-                "AltitudeVelocity (m/s)": AltitudeVelocity,
-                "DifferentialPressure(Pa)": differentialPressure
+                "AltitudeVelocity (m/s)": AltitudeVelocity
                 }
         csv_writer.writerow(info)
         print('data saved to csv')
