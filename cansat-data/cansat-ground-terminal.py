@@ -36,7 +36,7 @@ Temperaturevar=[]
 Pressurevar=[]
 Altitudevar=[]
 
-RH = 1
+RH = 0.605
 
 pitchF = 0
 rollF = 0
@@ -93,7 +93,7 @@ def makeFig():
     plt.xlabel('Time')
     plt.ticklabel_format(useOffset=False)
     plt2=plt.twinx()
-    plt.ylim(800,1100)
+    plt.ylim(850,1150)
     plt2.plot(Timevar,Pressurevar,label='Atmospheric Pressure')
     #plt2.set_ylabel('A. Pressure')
     plt2.legend(loc='best')
@@ -143,16 +143,16 @@ while True:
 
     ################################# Take Readings ################################# 
     t = int(ser.readline().decode("utf-8"))
-    t_sec = round(t / 1000)
+    t_sec = t / 1000
     print("Time:",t_sec)   
     dp =  float(ser.readline().decode("utf-8"))
     print("Differential Pressure Voltage:",dp)
     temp1 = float(ser.readline().decode("utf-8"))
-    print("Temperature (Sensor):",temp1)
+    print("Temperature (Sensor):",temp1+4.4)
     press =  float(ser.readline().decode("utf-8"))
-    print("AtmosphericPressure:",press)
+    print("AtmosphericPressure:",press+64.86)
     altit =  float(ser.readline().decode("utf-8"))
-    print("Altitude:",altit)
+    print("Altitude:",altit+26.39)
     ax = float(ser.readline().decode("utf-8"))
     print("Accel. X:",ax)
     ay = float(ser.readline().decode("utf-8"))
@@ -196,6 +196,7 @@ while True:
     Tkelvin = temp1 + 273.15
 
     ro = ((Pd / (Rd * Tkelvin)) + (Pv / (Rv * Tkelvin)))*100
+    print("Air density",ro)
     #Air density
     
     #differentialPressure = (10000*(((dp-38.5)/1023)-0.5)/2)
@@ -203,7 +204,7 @@ while True:
     #Differential Pressure Pitot Tube
 
     PitotVelocity = sqrt(abs(((dp-38.5)/1023)-0.5)*10000/ro)
-    #print("Pitot Velocity:",PitotVelocity)
+    print("Pitot Velocity:",PitotVelocity)
     #velocity from Pitot Tube
     
     ################################# Add to Figure Data and Draw Figure ################################# 

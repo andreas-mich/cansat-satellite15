@@ -152,7 +152,7 @@ void loop() {
   // BMP280
   rp.temp = bmp.readTemperature(); // probably needs calibration
   rp.pres = bmp.readPressure()/100; //displaying the Pressure in hPa, you can change the unit
-  rp.altit = bmp.readAltitude(1019.66); //The "1019.66" is the pressure(hPa) at sea level in day in your region
+  rp.altit = bmp.readAltitude(1025.6); //The "1019.66" is the pressure(hPa) at sea level in day in your region
                                         //If you don't know it, modify it until you get your current altitude
 
   // ACCELEROMETER
@@ -164,10 +164,10 @@ void loop() {
   rp.aZ = event.acceleration.z;
   
   // BUZZER
-  //tone(buzzer, 1500); // Send 1KHz sound signal...
-  //delay(1000);        // ...for 1 sec
-  //noTone(buzzer);     // Stop sound...
-  //delay(100);        // ...for 1sec
+  tone(buzzer, 1500); // Send 1KHz sound signal...
+  delay(1000);        // ...for 1 sec
+  noTone(buzzer);     // Stop sound...
+  delay(100);        // ...for 1sec
   
 
   // Print data (debagging purposes)
